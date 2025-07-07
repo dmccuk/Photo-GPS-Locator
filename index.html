@@ -120,14 +120,46 @@
         
         #map {
             height: 400px;
+            width: 100%;
             border-radius: 10px;
             box-shadow: 0 10px 30px rgba(0,0,0,0.1);
             display: none;
+            position: relative;
+            z-index: 1;
         }
         
         #map.show {
             display: block;
             animation: slideIn 0.5s ease;
+        }
+        
+        /* Mobile specific styles */
+        @media (max-width: 768px) {
+            body {
+                padding: 10px;
+            }
+            
+            .container {
+                padding: 20px;
+            }
+            
+            h1 {
+                font-size: 2em;
+            }
+            
+            .upload-area {
+                padding: 20px;
+            }
+            
+            #map {
+                height: 300px;
+                min-height: 300px;
+            }
+            
+            .preview-image {
+                max-width: 100%;
+                max-height: 150px;
+            }
         }
         
         .error {
@@ -317,28 +349,34 @@
         }
 
         function displayMap(lat, lng) {
-            // Initialize map if not already done
-            if (!map) {
-                map = L.map('map').setView([lat, lng], 13);
-                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                    attribution: '© OpenStreetMap contributors'
-                }).addTo(map);
-            } else {
-                map.setView([lat, lng], 13);
-            }
-
-            // Remove existing marker
-            if (marker) {
-                map.removeLayer(marker);
-            }
-
-            // Add new marker
-            marker = L.marker([lat, lng]).addTo(map)
-                .bindPopup(`📍 Photo taken here<br>Coordinates: ${lat.toFixed(6)}, ${lng.toFixed(6)}`)
-                .openPopup();
-
-            // Show map
+            // Show map container first
             document.getElementById('map').classList.add('show');
+            
+            // Small delay to ensure the container is visible before initializing map
+            setTimeout(() => {
+                // Initialize map if not already done
+                if (!map) {
+                    map = L.map('map').setView([lat, lng], 13);
+                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                        attribution: '© OpenStreetMap contributors'
+                    }).addTo(map);
+                } else {
+                    map.setView([lat, lng], 13);
+                }
+
+                // Remove existing marker
+                if (marker) {
+                    map.removeLayer(marker);
+                }
+
+                // Add new marker
+                marker = L.marker([lat, lng]).addTo(map)
+                    .bindPopup(`📍 Photo taken here<br>Coordinates: ${lat.toFixed(6)}, ${lng.toFixed(6)}`)
+                    .openPopup();
+
+                // Force map to resize (important for mobile)
+                map.invalidateSize();
+            }, 100);
         }
 
         function showError(message) {
