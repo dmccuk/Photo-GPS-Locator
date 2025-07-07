@@ -1,94 +1,353 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>Photo GPS Locator</title>
-  <script src="https://unpkg.com/exif-js"></script>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
-  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-  <style>
-    body {
-      font-family: sans-serif;
-      padding: 20px;
-    }
-    #map {
-      height: 400px;
-      margin-top: 20px;
-      display: none;
-    }
-    #status {
-      margin-top: 15px;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Geolocation Checker</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/exif-js/2.3.0/exif.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+            font-size: 2.5em;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .upload-area {
+            border: 3px dashed #667eea;
+            border-radius: 10px;
+            padding: 40px;
+            text-align: center;
+            margin-bottom: 30px;
+            transition: all 0.3s ease;
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.05), rgba(118, 75, 162, 0.05));
+        }
+        
+        .upload-area:hover {
+            border-color: #764ba2;
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
+            transform: translateY(-2px);
+        }
+        
+        .upload-area.dragover {
+            border-color: #764ba2;
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.15), rgba(118, 75, 162, 0.15));
+        }
+        
+        #fileInput {
+            display: none;
+        }
+        
+        .upload-btn {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+        }
+        
+        .upload-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+        
+        .info-panel {
+            background: linear-gradient(135deg, rgba(102, 126, 234, 0.05), rgba(118, 75, 162, 0.05));
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 30px;
+            display: none;
+        }
+        
+        .info-panel.show {
+            display: block;
+            animation: slideIn 0.5s ease;
+        }
+        
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .info-item {
+            margin-bottom: 10px;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(102, 126, 234, 0.1);
+        }
+        
+        .info-item:last-child {
+            border-bottom: none;
+        }
+        
+        .info-label {
+            font-weight: bold;
+            color: #667eea;
+            display: inline-block;
+            min-width: 120px;
+        }
+        
+        #map {
+            height: 400px;
+            border-radius: 10px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            display: none;
+        }
+        
+        #map.show {
+            display: block;
+            animation: slideIn 0.5s ease;
+        }
+        
+        .error {
+            color: #e74c3c;
+            text-align: center;
+            padding: 20px;
+            background: rgba(231, 76, 60, 0.1);
+            border-radius: 10px;
+            margin-top: 20px;
+        }
+        
+        .success {
+            color: #27ae60;
+            text-align: center;
+            padding: 20px;
+            background: rgba(39, 174, 96, 0.1);
+            border-radius: 10px;
+            margin-top: 20px;
+        }
+        
+        .preview-image {
+            max-width: 300px;
+            max-height: 200px;
+            border-radius: 10px;
+            margin: 20px auto;
+            display: block;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+    </style>
 </head>
 <body>
-  <h1>📸 Where Was This Photo Taken?</h1>
-  <p>Select a <strong>JPEG</strong> image with GPS data:</p>
-  <input type="file" id="imageInput" accept="image/jpeg" />
+    <div class="container">
+        <h1>📍 Image Geolocation Checker</h1>
+        
+        <div class="upload-area" id="uploadArea">
+            <p>📸 Drag and drop an image here or click to select</p>
+            <button class="upload-btn" onclick="document.getElementById('fileInput').click()">
+                Choose Image
+            </button>
+            <input type="file" id="fileInput" accept="image/*">
+        </div>
+        
+        <div id="result"></div>
+        
+        <div class="info-panel" id="infoPanel">
+            <h3>📊 Image Information</h3>
+            <div id="imageInfo"></div>
+            <img id="previewImage" class="preview-image" style="display: none;">
+        </div>
+        
+        <div id="map"></div>
+    </div>
 
-  <div id="status">Awaiting upload...</div>
-  <div id="map"></div>
-  <p style="margin-top: 40px; color: gray; font-size: 0.9em;">
-    Version: <strong>v00111.03</strong>
-  </p>
+    <script>
+        let map;
+        let marker;
 
-  <script>
-    function toDecimal(coord, ref) {
-      const degrees = coord[0].numerator / coord[0].denominator;
-      const minutes = coord[1].numerator / coord[1].denominator;
-      const seconds = coord[2].numerator / coord[2].denominator;
+        // File input handler
+        document.getElementById('fileInput').addEventListener('change', handleFileSelect);
 
-      let decimal = degrees + minutes / 60 + seconds / 3600;
-      return (ref === "S" || ref === "W") ? -decimal : decimal;
-    }
+        // Drag and drop handlers
+        const uploadArea = document.getElementById('uploadArea');
+        uploadArea.addEventListener('dragover', handleDragOver);
+        uploadArea.addEventListener('dragleave', handleDragLeave);
+        uploadArea.addEventListener('drop', handleDrop);
 
-    document.getElementById('imageInput').addEventListener('change', function(event) {
-      const file = event.target.files[0];
-      if (!file) return;
+        function handleDragOver(e) {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        }
 
-      if (!file.type.match('image/jpeg')) {
-        document.getElementById('status').innerText = "Only JPEG images are supported.";
-        return;
-      }
+        function handleDragLeave(e) {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+        }
 
-      const reader = new FileReader();
-      reader.onload = function(e) {
-        // Pass the File object directly, not arrayBuffer
-        EXIF.getData(file, function() {
-          const lat = EXIF.getTag(this, "GPSLatitude");
-          const lon = EXIF.getTag(this, "GPSLongitude");
-          const latRef = EXIF.getTag(this, "GPSLatitudeRef");
-          const lonRef = EXIF.getTag(this, "GPSLongitudeRef");
+        function handleDrop(e) {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                processImage(files[0]);
+            }
+        }
 
-          console.log("Raw EXIF GPS data:", { lat, latRef, lon, lonRef });
+        function handleFileSelect(e) {
+            const files = e.target.files;
+            if (files.length > 0) {
+                processImage(files[0]);
+            }
+        }
 
-          if (lat && lon && latRef && lonRef) {
-            const latitude = toDecimal(lat, latRef);
-            const longitude = toDecimal(lon, lonRef);
+        function processImage(file) {
+            // Clear previous results
+            document.getElementById('result').innerHTML = '';
+            document.getElementById('infoPanel').classList.remove('show');
+            document.getElementById('map').classList.remove('show');
 
-            document.getElementById('status').innerText =
-              `GPS coordinates found: ${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
+            // Validate file type
+            if (!file.type.match('image.*')) {
+                showError('Please select a valid image file.');
+                return;
+            }
 
-            const mapDiv = document.getElementById('map');
-            mapDiv.style.display = 'block';
+            // Show preview
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const previewImage = document.getElementById('previewImage');
+                previewImage.src = e.target.result;
+                previewImage.style.display = 'block';
+            };
+            reader.readAsDataURL(file);
 
-            const map = L.map('map').setView([latitude, longitude], 13);
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-              attribution: '&copy; OpenStreetMap contributors'
-            }).addTo(map);
+            // Extract EXIF data
+            EXIF.getData(file, function() {
+                const lat = EXIF.getTag(this, "GPSLatitude");
+                const lon = EXIF.getTag(this, "GPSLongitude");
+                const latRef = EXIF.getTag(this, "GPSLatitudeRef");
+                const lonRef = EXIF.getTag(this, "GPSLongitudeRef");
+                const dateTime = EXIF.getTag(this, "DateTime");
+                const camera = EXIF.getTag(this, "Make");
+                const model = EXIF.getTag(this, "Model");
 
-            L.marker([latitude, longitude])
-              .addTo(map)
-              .bindPopup("Photo taken here")
-              .openPopup();
-          } else {
-            document.getElementById('status').innerText = "No GPS data found in this image.";
-            document.getElementById('map').style.display = 'none';
-          }
-        });
-      };
-      reader.readAsArrayBuffer(file); // still needed to trigger EXIF loading
-    });
-  </script>
+                // Display image info
+                displayImageInfo(file, dateTime, camera, model);
+
+                if (lat && lon) {
+                    // Convert GPS coordinates to decimal degrees
+                    const latitude = convertDMSToDD(lat, latRef);
+                    const longitude = convertDMSToDD(lon, lonRef);
+                    
+                    showSuccess(`📍 Location found! Latitude: ${latitude.toFixed(6)}, Longitude: ${longitude.toFixed(6)}`);
+                    displayMap(latitude, longitude);
+                } else {
+                    showError('❌ No GPS data found in this image. The image may not have location information embedded in its EXIF data.');
+                }
+            });
+        }
+
+        function displayImageInfo(file, dateTime, camera, model) {
+            const infoPanel = document.getElementById('infoPanel');
+            const imageInfo = document.getElementById('imageInfo');
+            
+            let infoHtml = `
+                <div class="info-item">
+                    <span class="info-label">File Name:</span>
+                    <span>${file.name}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">File Size:</span>
+                    <span>${(file.size / 1024 / 1024).toFixed(2)} MB</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">File Type:</span>
+                    <span>${file.type}</span>
+                </div>
+            `;
+
+            if (dateTime) {
+                infoHtml += `
+                    <div class="info-item">
+                        <span class="info-label">Date Taken:</span>
+                        <span>${dateTime}</span>
+                    </div>
+                `;
+            }
+
+            if (camera) {
+                infoHtml += `
+                    <div class="info-item">
+                        <span class="info-label">Camera:</span>
+                        <span>${camera}${model ? ' ' + model : ''}</span>
+                    </div>
+                `;
+            }
+
+            imageInfo.innerHTML = infoHtml;
+            infoPanel.classList.add('show');
+        }
+
+        function convertDMSToDD(dms, ref) {
+            let dd = dms[0] + dms[1]/60 + dms[2]/3600;
+            if (ref === "S" || ref === "W") {
+                dd = dd * -1;
+            }
+            return dd;
+        }
+
+        function displayMap(lat, lng) {
+            // Initialize map if not already done
+            if (!map) {
+                map = L.map('map').setView([lat, lng], 13);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '© OpenStreetMap contributors'
+                }).addTo(map);
+            } else {
+                map.setView([lat, lng], 13);
+            }
+
+            // Remove existing marker
+            if (marker) {
+                map.removeLayer(marker);
+            }
+
+            // Add new marker
+            marker = L.marker([lat, lng]).addTo(map)
+                .bindPopup(`📍 Photo taken here<br>Coordinates: ${lat.toFixed(6)}, ${lng.toFixed(6)}`)
+                .openPopup();
+
+            // Show map
+            document.getElementById('map').classList.add('show');
+        }
+
+        function showError(message) {
+            document.getElementById('result').innerHTML = `<div class="error">${message}</div>`;
+        }
+
+        function showSuccess(message) {
+            document.getElementById('result').innerHTML = `<div class="success">${message}</div>`;
+        }
+    </script>
 </body>
 </html>
