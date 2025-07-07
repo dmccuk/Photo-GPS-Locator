@@ -49,7 +49,7 @@
       reader.onload = function(e) {
         const arrayBuffer = e.target.result;
 
-        EXIF.getData({ data: arrayBuffer }, function() {
+        EXIF.getData(file, function() {
           const lat = EXIF.getTag(this, "GPSLatitude");
           const lon = EXIF.getTag(this, "GPSLongitude");
           const latRef = EXIF.getTag(this, "GPSLatitudeRef");
