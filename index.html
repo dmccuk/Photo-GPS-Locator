@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Photo GPS Locator</title>
+  <script src="https://unpkg.com/exif-js"></script>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <style>
+    body {
+      font-family: sans-serif;
+      padding: 20px;
+    }
+    #map {
+      height: 400px;
+      margin-top: 20px;
+      display: none;
+    }
+    #status {
+      margin-top: 15px;
+    }
+  </style>
+</head>
+<body>
+  <h1>📸 Where Was This Photo Taken?</h1>
+  <p>Select a <strong>JPEG</strong> image with GPS data:</p>
+  <input type="file" id="imageInput" accept="image/jpeg" />
+
+  <div id="status">Awaiting upload...</div>
+  <div id="map"></div>
+
+  <script>
+    function toDecimal(coord, ref) {
+      const [deg, min, sec] = coord;
+      let decimal = deg + min / 60 + sec / 3600;
+      return (ref === "S" || ref === "W") ? -decimal : decimal;
+    }
+
+    document.getElementById('imageInput').addEventListener('change', function(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      if (!file.type.match('image/jpeg')) {
+        document.getElementById('status').innerText = "Only JPEG images are supported.";
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const arrayBuffer = e.target.result;
+
+        EXIF.getData({ data: arrayBuffer }, function() {
+          const lat = EXIF.getTag(this, "GPSLatitude");
+          const lon = EXIF.getTag(this, "GPSLongitude");
+          const latRef = EXIF.getTag(this, "GPSLatitudeRef");
+          const lonRef = EXIF.getTag(this, "GPSLongitudeRef");
+
+          if (lat && lon && latRef && lonRef) {
+            const latitude = toDecimal(lat, latRef);
+            const longitude = toDecimal(lon, lonRef);
+
+            document.getElementById('status').innerText = `GPS coordinates found: ${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
+
+            const mapDiv = document.getElementById('map');
+            mapDiv.style.display = 'block';
+
+            const map = L.map('map').setView([latitude, longitude], 13);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+              attribution: '&copy; OpenStreetMap contributors'
+            }).addTo(map);
+            L.marker([latitude, longitude]).addTo(map).bindPopup("Photo taken here").openPopup();
+          } else {
+            document.getElementById('status').innerText = "No GPS data found in this image.";
+            document.getElementById('map').style.display = 'none';
+          }
+        });
+      };
+      reader.readAsArrayBuffer(file);
+    });
+  </script>
+</body>
+</html>
