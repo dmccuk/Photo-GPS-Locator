@@ -32,11 +32,14 @@
     Version: <strong>v00111.01</strong>
   </p>
   <script>
-    function toDecimal(coord, ref) {
-      const [deg, min, sec] = coord;
-      let decimal = deg + min / 60 + sec / 3600;
-      return (ref === "S" || ref === "W") ? -decimal : decimal;
-    }
+  function toDecimal(coord, ref) {
+    const degrees = coord[0].numerator / coord[0].denominator;
+    const minutes = coord[1].numerator / coord[1].denominator;
+    const seconds = coord[2].numerator / coord[2].denominator;
+
+    let decimal = degrees + minutes / 60 + seconds / 3600;
+    return (ref === "S" || ref === "W") ? -decimal : decimal;
+  }
 
     document.getElementById('imageInput').addEventListener('change', function(event) {
       const file = event.target.files[0];
